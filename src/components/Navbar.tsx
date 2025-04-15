@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, User, Search, Menu, X } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   return (
     <header className="bg-cream-light py-4 sticky top-0 z-50 shadow-sm">
@@ -36,7 +38,7 @@ const Navbar = () => {
           <Button variant="ghost" size="icon" className="text-wood-dark hover:text-wood hover:bg-cream">
             <Search size={20} />
           </Button>
-          <Link to="/auth">
+          <Link to={isAuthenticated ? "/dashboard" : "/auth"}>
             <Button variant="ghost" size="icon" className="text-wood-dark hover:text-wood hover:bg-cream">
               <User size={20} />
             </Button>
@@ -90,7 +92,7 @@ const Navbar = () => {
               <Button variant="ghost" size="icon" className="text-wood-dark hover:text-wood hover:bg-cream">
                 <Search size={20} />
               </Button>
-              <Link to="/auth">
+              <Link to={isAuthenticated ? "/dashboard" : "/auth"}>
                 <Button variant="ghost" size="icon" className="text-wood-dark hover:text-wood hover:bg-cream">
                   <User size={20} />
                 </Button>
