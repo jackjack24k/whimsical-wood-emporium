@@ -1,6 +1,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 type User = {
   id: string;
@@ -24,6 +25,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Mock user data - in a real app, we'd verify with the backend
   const mockUsers = [
@@ -39,6 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(JSON.parse(savedUser));
       } catch (error) {
         console.error('Error parsing user data:', error);
+        localStorage.removeItem('user'); // Clear corrupted data
       }
     }
     setIsLoading(false);
@@ -47,68 +50,89 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Find user with matching credentials
-    const foundUser = mockUsers.find(
-      u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    
-    if (foundUser) {
-      // Remove password before storing
-      const { password, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Find user with matching credentials
+      const foundUser = mockUsers.find(
+        u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+      );
+      
+      if (foundUser) {
+        // Remove password before storing
+        const { password: _, ...userWithoutPassword } = foundUser;
+        setUser(userWithoutPassword);
+        localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+        toast({
+          title: 'Login successful',
+          description: `Welcome back, ${foundUser.name}!`,
+        });
+        navigate('/dashboard');
+      } else {
+        toast({
+          title: 'Login failed',
+          description: 'Invalid email or password. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Login error:', error);
       toast({
-        title: 'Login successful',
-        description: `Welcome back, ${foundUser.name}!`,
-      });
-    } else {
-      toast({
-        title: 'Login failed',
-        description: 'Invalid email or password. Please try again.',
+        title: 'Login error',
+        description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const signup = async (name: string, email: string, password: string) => {
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if email already exists
-    if (mockUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Check if email already exists
+      if (mockUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+        toast({
+          title: 'Signup failed',
+          description: 'An account with this email already exists.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Create new user (in a real app, this would be sent to the backend)
+      const newUser = {
+        id: `${mockUsers.length + 1}`,
+        email,
+        name,
+        isAdmin: false,
+      };
+      
+      setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      
       toast({
-        title: 'Signup failed',
-        description: 'An account with this email already exists.',
+        title: 'Account created',
+        description: `Welcome, ${name}! Your account has been created successfully.`,
+      });
+      
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Signup error:', error);
+      toast({
+        title: 'Signup error',
+        description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive',
       });
+    } finally {
       setIsLoading(false);
-      return;
     }
-    
-    // Create new user (in a real app, this would be sent to the backend)
-    const newUser = {
-      id: `${mockUsers.length + 1}`,
-      email,
-      name,
-      isAdmin: false,
-    };
-    
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    
-    toast({
-      title: 'Account created',
-      description: `Welcome, ${name}! Your account has been created successfully.`,
-    });
-    
-    setIsLoading(false);
   };
 
   const logout = () => {
@@ -118,6 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       title: 'Logged out',
       description: 'You have been successfully logged out.',
     });
+    navigate('/');
   };
 
   return (

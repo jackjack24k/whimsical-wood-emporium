@@ -1,13 +1,32 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, User, Search, Menu, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleAuthClick = () => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    } else {
+      navigate('/auth');
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: 'Success',
+      description: 'You have been logged out successfully.',
+    });
+  };
 
   return (
     <header className="bg-cream-light py-4 sticky top-0 z-50 shadow-sm">
@@ -38,11 +57,37 @@ const Navbar = () => {
           <Button variant="ghost" size="icon" className="text-wood-dark hover:text-wood hover:bg-cream">
             <Search size={20} />
           </Button>
-          <Link to={isAuthenticated ? "/dashboard" : "/auth"}>
-            <Button variant="ghost" size="icon" className="text-wood-dark hover:text-wood hover:bg-cream">
+          
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-wood-dark hover:text-wood hover:bg-cream"
+                onClick={handleAuthClick}
+              >
+                <User size={20} />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="text-wood-dark"
+              >
+                Logout
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-wood-dark hover:text-wood hover:bg-cream"
+              onClick={handleAuthClick}
+            >
               <User size={20} />
             </Button>
-          </Link>
+          )}
+          
           <Link to="/cart">
             <Button variant="ghost" size="icon" className="text-wood-dark hover:text-wood hover:bg-cream relative">
               <ShoppingCart size={20} />
@@ -76,27 +121,53 @@ const Navbar = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-cream-light border-t border-wood-light">
           <div className="container-custom py-4 space-y-4">
-            <Link to="/" className="block text-wood-dark hover:text-wood transition-colors py-2">
+            <Link to="/" className="block text-wood-dark hover:text-wood transition-colors py-2"
+              onClick={() => setIsMenuOpen(false)}>
               Home
             </Link>
-            <Link to="/products" className="block text-wood-dark hover:text-wood transition-colors py-2">
+            <Link to="/products" className="block text-wood-dark hover:text-wood transition-colors py-2"
+              onClick={() => setIsMenuOpen(false)}>
               Shop
             </Link>
-            <Link to="/about" className="block text-wood-dark hover:text-wood transition-colors py-2">
+            <Link to="/about" className="block text-wood-dark hover:text-wood transition-colors py-2"
+              onClick={() => setIsMenuOpen(false)}>
               About
             </Link>
-            <Link to="/contact" className="block text-wood-dark hover:text-wood transition-colors py-2">
+            <Link to="/contact" className="block text-wood-dark hover:text-wood transition-colors py-2"
+              onClick={() => setIsMenuOpen(false)}>
               Contact
             </Link>
-            <div className="flex items-center space-x-4 pt-2">
-              <Button variant="ghost" size="icon" className="text-wood-dark hover:text-wood hover:bg-cream">
-                <Search size={20} />
-              </Button>
-              <Link to={isAuthenticated ? "/dashboard" : "/auth"}>
-                <Button variant="ghost" size="icon" className="text-wood-dark hover:text-wood hover:bg-cream">
-                  <User size={20} />
-                </Button>
-              </Link>
+            
+            <div className="flex flex-col space-y-2 pt-2">
+              {isAuthenticated ? (
+                <>
+                  <Link 
+                    to="/dashboard" 
+                    className="block text-wood-dark hover:text-wood transition-colors py-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    My Account
+                  </Link>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      logout();
+                      setIsMenuOpen(false);
+                    }}
+                    className="text-wood-dark justify-start"
+                  >
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <Link 
+                  to="/auth" 
+                  className="block text-wood-dark hover:text-wood transition-colors py-2"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Login / Register
+                </Link>
+              )}
             </div>
           </div>
         </div>
