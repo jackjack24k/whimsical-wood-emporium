@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { findUserByEmail, createUser, validateUserPassword } from '@/utils/mongodbUtils';
 
 type User = {
   id: string;
@@ -27,12 +28,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Mock user data - in a real app, we'd verify with the backend
-  const mockUsers = [
-    { id: '1', email: 'admin@woodandwhimsy.com', password: 'password123', name: 'Admin User', isAdmin: true },
-    { id: '2', email: 'user@example.com', password: 'password123', name: 'Regular User', isAdmin: false },
-  ];
-
   useEffect(() => {
     // Check for saved auth token
     const savedUser = localStorage.getItem('user');
@@ -51,22 +46,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Using MongoDB to validate user credentials
+      const validatedUser = await validateUserPassword(email, password);
       
-      // Find user with matching credentials
-      const foundUser = mockUsers.find(
-        u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-      );
-      
-      if (foundUser) {
-        // Remove password before storing
-        const { password: _, ...userWithoutPassword } = foundUser;
-        setUser(userWithoutPassword);
-        localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+      if (validatedUser) {
+        setUser(validatedUser as User);
+        localStorage.setItem('user', JSON.stringify(validatedUser));
         toast({
           title: 'Login successful',
-          description: `Welcome back, ${foundUser.name}!`,
+          description: `Welcome back, ${validatedUser.name}!`,
         });
         navigate('/dashboard');
       } else {
@@ -80,7 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('Login error:', error);
       toast({
         title: 'Login error',
-        description: 'An unexpected error occurred. Please try again.',
+        description: 'An error occurred connecting to the database. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -92,11 +80,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Check if user already exists
+      const existingUser = await findUserByEmail(email);
       
-      // Check if email already exists
-      if (mockUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+      if (existingUser) {
         toast({
           title: 'Signup failed',
           description: 'An account with this email already exists.',
@@ -106,28 +93,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      // Create new user (in a real app, this would be sent to the backend)
-      const newUser = {
-        id: `${mockUsers.length + 1}`,
+      // Create new user in MongoDB
+      const newUserData = {
         email,
         name,
+        password, // In production, NEVER store plain text passwords!
         isAdmin: false,
       };
       
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
+      const result = await createUser(newUserData);
       
-      toast({
-        title: 'Account created',
-        description: `Welcome, ${name}! Your account has been created successfully.`,
-      });
-      
-      navigate('/dashboard');
+      if (result && result.insertedId) {
+        const newUser = {
+          id: result.insertedId.toString(),
+          email,
+          name,
+          isAdmin: false,
+        };
+        
+        setUser(newUser);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        
+        toast({
+          title: 'Account created',
+          description: `Welcome, ${name}! Your account has been created successfully.`,
+        });
+        
+        navigate('/dashboard');
+      } else {
+        throw new Error('Failed to create user account');
+      }
     } catch (error) {
       console.error('Signup error:', error);
       toast({
         title: 'Signup error',
-        description: 'An unexpected error occurred. Please try again.',
+        description: 'An error occurred creating your account. Please try again.',
         variant: 'destructive',
       });
     } finally {
